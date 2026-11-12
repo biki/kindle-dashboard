@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+._*
+# Files the Kindle writes at run time (if copied back)
+kindle/kindledash/weather.csv
+kindle/kindledash/events.txt
+kindle/kindledash/cal-*.ics
+kindle/kindledash/wtime
+kindle/kindledash/pid
+kindle/kindledash/*.log
+kindle/kindledash/probe.txt
+kindle/kindledash/fl.saved
+kindle/kindledash/secrets.conf
+kindle/kindledash/.update/
+kindle/kindledash/*.new
+kindle/kindledash/.weather.new
+kindle/kindledash/.cal.new
+tools/.venv/
