@@ -51,4 +51,4 @@ rc=$(run | tail -1); check "wrong checksum" "$rc" 1
 [ -d dev/.update ] && { echo "FAIL .update left behind"; FAILED=1; } || echo "ok   no .update left behind"
 exit $FAILED
 EOF
-docker run --rm -v "$W:/w" busybox:1.36 sh /w/run.sh
+docker run --rm -v "$W:/w" "${BUSYBOX:-busybox:1.36}" sh /w/run.sh

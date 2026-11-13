@@ -25,6 +25,18 @@ FBINK=/mnt/us/libkh/bin/fbink
         case "$u" in webcal://*) u="https://${u#webcal://}" ;; esac
         echo "--- calendar: ${u%%\?*}"; curl -s -S -L -m 30 "$u" 2>&1 | head -3
     done
+    if [ -n "$TIBBER_HOST" ]; then
+        echo "--- meter bridge (http status, bytes)"
+        curl -s -S -m 15 -u "$TIBBER_USER:$TIBBER_PASS" -o /tmp/kd-meter.bin -w '%{http_code} %{size_download}\n' \
+            "http://$TIBBER_HOST$TIBBER_PATH" 2>&1
+        echo "first bytes: $(od -An -N 16 -t x1 /tmp/kd-meter.bin 2>/dev/null)"
+        r=$(od -An -v -t x1 /tmp/kd-meter.bin 2>/dev/null | awk -v mode=sml -f "$DIR/meter.awk")
+        [ -n "$r" ] || r=$(tr -d '\000' < /tmp/kd-meter.bin 2>/dev/null | awk -v mode=text -f "$DIR/meter.awk")
+        echo "decoded (total_kwh|power_w): ${r:-nothing}"
+    fi
+    if [ -n "$SHEET_URL" ]; then
+        echo "--- sheet (newest 3 rows)"; curl -s -S -L -m 60 -d "token=$SHEET_TOKEN&action=rows&n=3" "$SHEET_URL" 2>&1 | head -n 4
+    fi
     echo "--- input"; cat /proc/bus/input/devices
     echo "--- rtc"; ls /sys/class/rtc/
     echo "--- ui"; pidof cvm

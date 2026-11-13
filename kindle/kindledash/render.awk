@@ -198,22 +198,27 @@ FILENAME == ARGV[1] {
 
 # --- Drawing ----------------------------------------------------------------------------
 
+# view=tibber: tibber.awk (appended after this file) draws the power meter view instead.
 END {
     today = fdiv(now, 86400)
-    cfd(today)
+    if (view != "tibber") {
+        header()
+        if (!HAVEW) T("B", 30, SW / 2, 400, "BLACK", "c", X["noweather"], 0)
+        else { current(); hourly(); daily() }
+        agenda()
+        footer()
+    }
+}
 
-    # Header: weekday and date on the left, place and week number on the right. No clock:
-    # the screen changes only every 15 minutes.
+# Weekday and date on the left, place and week number on the right. No clock: the screen
+# changes only every hour.
+function header(   d) {
+    cfd(today)
     T("D", 54, ML, 70, "BLACK", "l", dayname(today, 0), 0)
     if (lang == "de") d = CD ". " MON[CM] " " CY; else d = CD " " MON[CM] " " CY
     T("R", 25, ML, 106, "GRAY5", "l", d, 0)
     T("B", 26, MR, 58, "BLACK", "r", place, 0)
     T("R", 22, MR, 96, "GRAY5", "r", X["week"] " " isoweek(today), 0)
-
-    if (!HAVEW) T("B", 30, SW / 2, 400, "BLACK", "c", X["noweather"], 0)
-    else { current(); hourly(); daily() }
-    agenda()
-    footer()
 }
 
 function current(   c, tx, col, sz, ti, s, i, y, prob) {
@@ -340,11 +345,14 @@ function footer(   s, bx) {
     if (wtime == "" || now - wtime > 3600) s = HAVEW ? X["wold"] " " hm(wtime) " (" X["offline"] ")" : X["noweather"]
     if (calfail + 0 > 0) s = s " · " calfail " " X["calfail"]
     T("R", 16, ML, 1014, "GRAY5", "l", s, 520)
-    if (batt != "") {
-        T("R", 16, MR, 1014, "GRAY5", "r", batt "%", 0)
-        bx = MR - TW - 34
-        rect(bx, 1002, 24, 13, "GRAY5"); rect(bx + 2, 1004, 20, 9, "WHITE")
-        rect(bx + 24, 1006, 2, 5, "GRAY5")
-        if (batt + 0 > 0) rect(bx + 3, 1005, 18 * min(batt, 100) / 100, 7, "GRAY5")
-    }
+    battery()
+}
+
+function battery(   bx) {
+    if (batt == "") return
+    T("R", 16, MR, 1014, "GRAY5", "r", batt "%", 0)
+    bx = MR - TW - 34
+    rect(bx, 1002, 24, 13, "GRAY5"); rect(bx + 2, 1004, 20, 9, "WHITE")
+    rect(bx + 24, 1006, 2, 5, "GRAY5")
+    if (batt + 0 > 0) rect(bx + 3, 1005, 18 * min(batt, 100) / 100, 7, "GRAY5")
 }

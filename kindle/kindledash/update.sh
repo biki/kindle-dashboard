@@ -49,6 +49,19 @@ awk -v now="$(date +%s)" -v lang=de -v place=Test -v batt=50 -v wtime="" -v ncal
     -f "$TMP/render-test.awk" "$DIR/weather.csv" "$DIR/events.txt" > "$TMP/render-test.txt" 2>&1 \
     || fail "test render failed: $(head -c 200 "$TMP/render-test.txt")"
 grep -q '^T|' "$TMP/render-test.txt" || fail "test render drew no text"
+# The power meter view (tibber.awk after render.awk), with no meter data, and the SML decoder.
+if [ -f "$(pick tibber.awk)" ]; then
+    cat "$TMP/render-test.awk" "$(pick tibber.awk)" > "$TMP/render-test2.awk"
+    awk -v now="$(date +%s)" -v lang=de -v place=Test -v batt=50 -v wtime="" -v ncal=1 -v calfail=0 \
+        -v view=tibber -v off=0 -v pushat=23:55 -v tfile=/nonexistent -v bfile=/nonexistent -v dfile=/nonexistent \
+        -f "$TMP/render-test2.awk" "$DIR/weather.csv" "$DIR/events.txt" > "$TMP/render-test.txt" 2>&1 \
+        || fail "test render (meter) failed: $(head -c 200 "$TMP/render-test.txt")"
+    grep -q '^T|' "$TMP/render-test.txt" || fail "test render (meter) drew no text"
+fi
+if [ -f "$(pick meter.awk)" ]; then
+    r=$(echo "77 07 01 00 01 08 00 ff 01 01 62 1e 52 ff 65 00 b3 b0 4e 01" | awk -v mode=sml -f "$(pick meter.awk)" 2>&1)
+    [ "$r" = "1177.6078|" ] || fail "meter.awk test failed: $r"
+fi
 cat "$(pick common.awk)" "$(pick ical.awk)" > "$TMP/ical-test.awk"
 echo "BEGIN:VCALENDAR" | awk -v from=0 -v to=86400 -v off=0 -v ltz=UTC -f "$TMP/ical-test.awk" > /dev/null 2>&1 \
     || fail "ical.awk does not parse"

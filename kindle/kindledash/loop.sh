@@ -9,6 +9,10 @@
 #   power button   wakes the Kindle: front light on, refresh now, then IDLE seconds awake.
 #                  The light goes off again before the Kindle sleeps.
 #   double tap     (while awake, also during a refresh) stops the dashboard and goes Home
+#   single tap     (while awake, with the meter set up) switches dashboard <-> power meter view
+#
+# Power meter (tibber.sh, when TIBBER_HOST is set): one reading at each refresh, and a daily row
+# for the Google Sheet at PUSH_AT. For that row the Kindle wakes up, also in the night pause.
 
 DIR=${DASH_DIR:-/mnt/us/kindledash}
 . "$DIR/kindledash.conf"
@@ -21,7 +25,10 @@ TMP=${DASH_TMP:-/tmp/kindledash}
 mkdir -p "$TMP"
 # busybox awk may take only one -f: join the parts once.
 cat "$DIR/fontdata.awk" "$DIR/common.awk" "$DIR/render.awk" > "$TMP/render.awk"
+# The meter view is a separate file: an error in tibber.awk must not stop the dashboard.
+cat "$TMP/render.awk" "$DIR/tibber.awk" > "$TMP/meterview.awk"
 cat "$DIR/common.awk" "$DIR/ical.awk" > "$TMP/ical.awk"
+{ cat "$DIR/common.awk"; printf '%s\n' 'BEGIN { cfd(fdiv(t, 86400)); printf "%02d.%02d.%04d\n", CD, CM, CY }'; } > "$TMP/dlabel.awk"
 
 # Plain http on purpose: Open-Meteo allows it, and it avoids TLS problems on old firmware.
 URL="http://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&timezone=auto&forecast_days=8&format=csv\
@@ -42,6 +49,8 @@ get() {  # get URL FILE
 }
 meta() { o=$(sed -n 2p "$DIR/weather.csv" 2>/dev/null | cut -d, -f"$1"); echo "${o:-$2}"; }
 local_now() { echo $(($(date +%s) + $(meta 4 0))); }
+tibber_on() { [ -n "$TIBBER_HOST" ]; }
+dlabel() { awk -v t="$1" -f "$TMP/dlabel.awk"; }  # local wall epoch -> dd.mm.yyyy
 
 # Wi-Fi on, weather as soon as the network works (or give up after WIFI_WAIT), calendars, Wi-Fi off.
 refresh() {
@@ -77,6 +86,13 @@ refresh() {
         sh "$DIR/update.sh"
         [ $? = 10 ] && updated=1
     fi
+    # Power meter: the bridge is on the home network. The sheet rows (chart) once a day.
+    if tibber_on; then
+        sh "$DIR/tibber.sh" read
+        if [ "$wok" = 1 ] && [ -n "$SHEET_URL" ] && [ "$days_day" != "$(($(local_now) / 86400))" ]; then
+            sh "$DIR/tibber.sh" days && days_day=$(($(local_now) / 86400))
+        fi
+    fi
     [ "$WIFI_OFF" = 1 ] && wifi 0
     log "refresh: weather $wok, calendars failed $calfail, $(($(date +%s) - t0)) s, battery $(lipc-get-prop com.lab126.powerd battLevel 2>/dev/null)%"
 }
@@ -102,8 +118,15 @@ render() {
     [ -f "$DIR/weather.csv" ] || : > "$DIR/weather.csv"
     batt=$(lipc-get-prop com.lab126.powerd battLevel 2>/dev/null)
     ncal=0; for u in $CALENDARS; do ncal=$((ncal + 1)); done
-    awk -v now="$ln" -v lang="$DASH_LANG" -v place="$PLACE" -v batt="$batt" -v wtime="$wt" \
-        -v ncal="$ncal" -v calfail="$calfail" -f "$TMP/render.awk" "$DIR/weather.csv" "$DIR/events.txt" > "$TMP/screen.txt"
+    set -- -v now="$ln" -v lang="$DASH_LANG" -v place="$PLACE" -v batt="$batt" -v wtime="$wt" \
+        -v ncal="$ncal" -v calfail="$calfail" -v off="$off" -v pushat="$PUSH_AT" \
+        -v tfile="$DIR/tibber.txt" -v bfile="$DIR/tibber.base" -v dfile="$DIR/tibber-days.txt"
+    if tibber_on && [ "$VIEW" = tibber ]; then
+        awk "$@" -v view=tibber -f "$TMP/meterview.awk" "$DIR/weather.csv" "$DIR/events.txt" > "$TMP/screen.txt" 2> "$TMP/awk.err" \
+            && grep -q '^T|' "$TMP/screen.txt" && return 0
+        log "meter view failed, drawing the dashboard: $(head -c 200 "$TMP/awk.err")"
+    fi
+    awk "$@" -v view=dash -f "$TMP/render.awk" "$DIR/weather.csv" "$DIR/events.txt" > "$TMP/screen.txt"
 }
 
 # Executes render.awk's commands (see the top of render.awk) with FBInk, then one full refresh.
@@ -135,6 +158,7 @@ prompt() {  # gray bar with a message at the top of the screen (black text: whit
 }
 
 bye() {  # called by the touch watcher on a double tap
+    rm -f "$TMP/tap"  # no view switch for the first tap
     log "exit: double tap"
     [ "$DASH_LANG" = de ] && prompt "Dashboard wird beendet …" || prompt "Closing dashboard …"
     setsid sh "$DIR/stop.sh" > /dev/null 2>&1 < /dev/null &
@@ -151,6 +175,36 @@ next_wait() {
         w = n - now + 20; print (w < 60 ? 60 : w) }'
 }
 
+# UTC epoch of the next daily meter row (PUSH_AT local time). 0 = no meter.
+next_push() {
+    tibber_on || { echo 0; return; }
+    awk -v now="$(local_now)" -v off="$(meta 4 0)" -v at="$PUSH_AT" 'BEGIN {
+        split(at, a, ":"); t = now - now % 86400 + a[1] * 3600 + a[2] * 60
+        if (t <= now) t += 86400
+        print t - off }'
+}
+
+# Daily meter row (tibber.sh push). Wi-Fi on for it, no drawing, the light stays as it is.
+# The row date is the day of the planned time, also when a retry comes after midnight.
+# Failed (bridge or sheet): again every 10 min for 1 h. Then the next night writes a two-day row.
+do_push() {
+    [ -n "$push_label" ] || { push_label=$(dlabel $((push_due + $(meta 4 0)))); push_plan=$push_due; }
+    wifi 1; t0=$(date +%s)
+    while :; do
+        sh "$DIR/tibber.sh" push "$push_label"; rc=$?
+        [ "$rc" != 2 ] && break
+        [ $(($(date +%s) - t0)) -ge "$WIFI_WAIT" ] && break
+        sleep 10
+    done
+    [ "$WIFI_OFF" = 1 ] && wifi 0
+    if [ "$rc" = 2 ] && [ $(($(date +%s) - push_plan)) -lt 3600 ]; then
+        push_due=$(($(date +%s) + 600)); log "meter: row $push_label failed, again in 10 min"
+    else
+        [ "$rc" = 2 ] && log "meter: row $push_label failed, the next row covers two days"
+        push_label=""; push_due=$(next_push)
+    fi
+}
+
 detect_touch() {
     [ -n "$TOUCH" ] && { echo "$TOUCH"; return; }
     e=$(awk '/^N: Name=/ { n = tolower($0) }
@@ -161,6 +215,7 @@ detect_touch() {
 
 # Exits on a double tap: two finger-down events (EV_KEY BTN_TOUCH = type 1, code 330, value 1)
 # within about 2 s. Runs in the background, so it also works while the main loop downloads.
+# A single tap (no second tap within 3 s) makes $TMP/switch: the main loop switches the view.
 # Raw input_event = 16 bytes on this 32-bit Kindle; after od: sec sec usec usec type code value value.
 watch_touch() {
     last=0
@@ -171,6 +226,10 @@ watch_touch() {
         n=$(date +%s)
         if [ $((n - last)) -le 2 ]; then bye; fi
         last=$n
+        if tibber_on; then
+            echo "$n" > "$TMP/tap"
+            ( sleep 3; [ "$(cat "$TMP/tap" 2>/dev/null)" = "$n" ] && : > "$TMP/switch" ) &
+        fi
     done
 }
 
@@ -212,8 +271,9 @@ suspend_until() {
 }
 
 # Test mode (tools/dev-render.sh): one download and render into $TMP/screen.txt, no drawing.
+VIEW=$(cat "$DIR/view" 2>/dev/null); [ "$VIEW" = tibber ] || VIEW=dash
 if [ -n "$DASH_RENDER_ONLY" ]; then
-    cal_last=0; cal_day=""; calfail=0
+    cal_last=0; cal_day=""; calfail=0; days_day=""
     refresh; parse_calendars; render
     exit
 fi
@@ -243,9 +303,16 @@ log "front light was $(cat "$DIR/fl.saved" 2>/dev/null), on-wake level $FL_LEVEL
 light "$FL_LEVEL"; lit=1
 
 rm -f "$DIR/tap" "$DIR/tap.read"  # files of older versions
+rm -f "$TMP/tap" "$TMP/switch"
 # woke=1: after the first refresh, stay awake IDLE s with the light on, as after a power-button wake.
-due=0; awake_until=0; woke=1; fails=0; cal_last=0; cal_day=""; calfail=0; upd_last=0
+due=0; awake_until=0; woke=1; fails=0; cal_last=0; cal_day=""; calfail=0; upd_last=0; days_day=""
+push_due=$(next_push); push_label=""
+tibber_on && log "meter: $TIBBER_HOST, view $VIEW, sheet $([ -n "$SHEET_URL" ] && echo on || echo off)"
 while :; do
+    if [ "$push_due" -gt 0 ] && [ "$(date +%s)" -ge "$push_due" ]; then
+        do_push
+        log "meter: next row at $(dlabel $((push_due + $(meta 4 0)))) $PUSH_AT"
+    fi
     if [ "$(date +%s)" -ge "$due" ]; then
         refresh
         if [ "$updated" = 1 ]; then  # start the new version (start.sh stops this one first)
@@ -259,11 +326,30 @@ while :; do
         log "next refresh in $(((due - $(date +%s)) / 60)) min"
         # After a power-button wake, stay awake IDLE s from now, so there is time for a double tap.
         [ "$woke" = 1 ] && { awake_until=$(($(date +%s) + IDLE)); woke=0; }
+        # The first refresh has the UTC offset (weather.csv): plan the daily row again with it.
+        [ -z "$push_label" ] && push_due=$(next_push)
+    fi
+
+    # Single tap: the other view, from the saved data (no Wi-Fi). Then IDLE s more awake.
+    if [ -f "$TMP/switch" ]; then
+        rm -f "$TMP/switch"
+        if [ "$VIEW" = tibber ]; then VIEW=dash; else VIEW=tibber; fi
+        echo "$VIEW" > "$DIR/view"
+        log "tap: view $VIEW"
+        render && draw
+        awake_until=$(($(date +%s) + IDLE))
+    fi
+    wake=$due; [ "$push_due" -gt 0 ] && [ "$push_due" -lt "$wake" ] && wake=$push_due
+    # A tap in the last seconds: stay awake until its switch can come (3 s after the tap).
+    tap=$(cat "$TMP/tap" 2>/dev/null)
+    if [ -n "$tap" ] && [ $(($(date +%s) - tap)) -le 4 ] && [ "$awake_until" -lt $((tap + 5)) ]; then
+        awake_until=$((tap + 5))
     fi
 
     if [ "$SLEEP" = 1 ] && [ "$(date +%s)" -ge "$awake_until" ]; then
         [ "$lit" = 1 ] && { light 0; lit=0; }
-        suspend_until "$due"
+        suspend_until "$wake"
+        rm -f "$TMP/tap" "$TMP/switch"  # a tap from before the sleep does not count
         # Power button: light on at once (the refresh takes a while), refresh, then IDLE s awake.
         [ "$early" = 1 ] && { light "$FL_LEVEL"; lit=1; due=0; woke=1; }
     elif [ "$SLEEP" != 1 ] && [ "$lit" = 1 ] && [ "$(date +%s)" -ge "$awake_until" ]; then

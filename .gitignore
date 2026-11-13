@@ -17,4 +17,10 @@ kindle/kindledash/.update/
 kindle/kindledash/*.new
 kindle/kindledash/.weather.new
 kindle/kindledash/.cal.new
+kindle/kindledash/tibber.txt
+kindle/kindledash/tibber.base
+kindle/kindledash/tibber-days.txt
+kindle/kindledash/view
+kindle/kindledash/.*.new
 tools/.venv/
+.codegraph/
