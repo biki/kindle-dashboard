@@ -91,11 +91,17 @@ function box(x, y, w, h, r, col, cc) {
     img("corner-" r "-" cc "-bl", x, y + h - r); img("corner-" r "-" cc "-br", x + w - r, y + h - r)
 }
 
-# Pill-shaped label with its text baseline at y. dark = black pill with white text.
-function pill(x, y, s, dark,   w) {
+# Pill-shaped label with its text baseline at y. strong = black outline (today), else gray fill.
+# No white text: FBInk 1.25.0 on the Paperwhite 2 drew white text on black as nothing.
+function pill(x, y, s, strong,   w) {
     w = width("B", 20, s) + 24
-    if (dark) box(x, y - 21, w, 28, 14, "BLACK", "0"); else box(x, y - 21, w, 28, 14, "GRAYD", "d")
-    T("B", 20, x + 12, y, dark ? "WHITE" : "BLACK", "l", s, 0)
+    if (strong) {  # 2 px black outline: straight edges as rectangles, round ends from ring corners
+        x = round(x); w = round(w)
+        rect(x + 14, y - 21, w - 28, 2, "BLACK"); rect(x + 14, y + 5, w - 28, 2, "BLACK")
+        img("corner-14-ring-tl", x, y - 21);      img("corner-14-ring-tr", x + w - 14, y - 21)
+        img("corner-14-ring-bl", x, y - 7);       img("corner-14-ring-br", x + w - 14, y - 7)
+    } else box(x, y - 21, w, 28, 14, "GRAYD", "d")
+    T("B", 20, x + 12, y, "BLACK", "l", s, 0)
     return w
 }
 

@@ -69,6 +69,7 @@ def build_fonts(fonts: dict) -> list[str]:
         sub.populate(unicodes=UNICODES)
         sub.subset(font)
         path = d / f"{key}.ttf"
+        font.recalcTimestamp = False  # same input -> same bytes, so the Kindle does not re-download fonts
         font.save(path)
         shutil.copy(SRC / LICENSES[src], d / LICENSES[src])
 
@@ -103,6 +104,9 @@ def build_icons() -> None:
     for r, col in ((18, "e"), (14, "0"), (14, "d")):
         for q in ("tl", "tr", "bl", "br"):
             save(icons.corner(r, GRAYS[col], q), f"corner-{r}-{col}-{q}.png")
+    # Outlined "today" pill: white outside, 2 px black ring, white inside.
+    for q in ("tl", "tr", "bl", "br"):
+        save(icons.corner_ring(14, 2, q), f"corner-14-ring-{q}.png")
     print(f"icons: {len(list(d.iterdir()))} PNGs")
 
 

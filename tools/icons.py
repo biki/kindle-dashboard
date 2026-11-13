@@ -211,6 +211,18 @@ def mini(kind: str, size: int, bg: int = WHITE) -> Image.Image:
     return p.done(size)
 
 
+def corner_ring(r: int, width: int, quadrant: str) -> Image.Image:
+    """r x r corner piece of an outlined box: white outside, black ring of `width` px, white inside."""
+    n, w = r * SS, width * SS
+    img = Image.new("L", (n, n), WHITE)
+    d = ImageDraw.Draw(img)
+    cx = n if "l" in quadrant else 0
+    cy = n if "t" in quadrant else 0
+    d.ellipse((cx - n, cy - n, cx + n, cy + n), fill=0)
+    d.ellipse((cx - n + w, cy - n + w, cx + n - w, cy + n - w), fill=WHITE)
+    return img.resize((r, r), Image.Resampling.LANCZOS)
+
+
 def corner(r: int, color: int, quadrant: str, bg: int = WHITE) -> Image.Image:
     """r x r corner piece of a rounded box: `color` inside the quarter disc, `bg` outside."""
     n = r * SS

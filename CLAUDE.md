@@ -45,6 +45,8 @@ Docker must run for the busybox tests. Check shell syntax with busybox: `docker 
 - Text positions: FBInk `px` = ascent − descent height (`stbtt_ScaleForPixelHeight`). Baseline = `top + ceil(scale × ascent)`. `render.awk` takes baselines and em sizes and converts them. FBInk wraps text that is too wide, so keep every text inside its box (`fit()` cuts it with "…").
 - FBInk cannot right-align TrueType text. `render.awk` measures the width with `fontdata.awk` and sets `left`.
 - Icons are baked on their background (white 255 or card gray 238). FBInk draws them without transparency here.
+- Do not use white text. On this Kindle, FBInk 1.25.0 drew white text (`-C WHITE -O`) on a black box as nothing, although the preview shows it. Use black or gray text on light backgrounds. The "today" pill is a black outline (`corner-14-ring-*`) for this reason.
+- `tools/build.py` must give the same bytes for the same input (`recalcTimestamp = False`). Otherwise every rebuild makes the Kindle download unchanged files again.
 - Shell loops on the Mac: zsh is the default shell. Do not use `path` as a variable name in zsh (it is tied to `PATH`). Run file loops with `sh -c '...'`.
 - The repo is public (github.com/biki/kindle-dashboard). Before a push, check that no calendar URL, email address or IP address is in the files. Commit email for this repo: the GitHub noreply address (set in the local git config).
 - Commit and push only when the user asks. `tools/release.sh` commits and pushes.

@@ -1,10 +1,10 @@
 46b5e10021447a005718fac19d32e9e4  common.awk
 3f19b2bbeb396e44d6584ddd7a9c5d68  fontdata.awk
-0385206d86580fc8c7ab6a912bf61274  fonts/B.ttf
-32bc30429d9a19775e6fa19611a9790a  fonts/D.ttf
+735458e7f6122fc8b42d9d1724a96698  fonts/B.ttf
+fdcad1617ab057e0eab27a02055ffe54  fonts/D.ttf
 1be2e7edc99bc4a3d9d56d68c48b5f39  fonts/Nunito-OFL.txt
-a2c78475d4642a60b815b2a544d944cb  fonts/R.ttf
-50a1b02f6f879829f87fbee480492a86  fonts/S.ttf
+95b520b50657809d12a701bda2253c3a  fonts/R.ttf
+bac2a830505e45331a357116fe0b45d6  fonts/S.ttf
 4882835f8f423e2412085d5d5f68a82b  ical.awk
 23c5196b65948dbe8a96693722c984e1  icons/clear-d-170.png
 1ebc4f3c653ec5aa9bd0a2de64808de7  icons/clear-d-56.png
@@ -22,6 +22,10 @@ abb922adf4ed1c8dd09fb4f067f5feba  icons/corner-14-d-bl.png
 29c6fa2f3487e51cd129327b724464b4  icons/corner-14-d-br.png
 132cda06525cd9473734a7768ee50221  icons/corner-14-d-tl.png
 7a859279209b06f25b5cd6bf5527ed0b  icons/corner-14-d-tr.png
+e7a2b79e7cf4a8873caa173f4e33390a  icons/corner-14-ring-bl.png
+382d2765200d0033646ae8d0c7141acc  icons/corner-14-ring-br.png
+52e9b97c921f20f335eb1805293211ce  icons/corner-14-ring-tl.png
+53249f190711b4aedaed1afc836be2d2  icons/corner-14-ring-tr.png
 8f383404b7204b306650a459808d0803  icons/corner-18-e-bl.png
 1842e72f7b8c2fa6dc0d740cb219e621  icons/corner-18-e-br.png
 c13acf12b430a9a893dc6ba1c0964e2b  icons/corner-18-e-tl.png
@@ -57,9 +61,9 @@ e60a8672cb2df5c8b6d66e345122ab2c  icons/storm-d-56.png
 a7d12ada4abad7633bd69990f6cb2dbf  icons/storm-n-170.png
 e60a8672cb2df5c8b6d66e345122ab2c  icons/storm-n-56.png
 9fae83075fe583ed2a9218032a62db82  kindledash.conf
-b2229ea6af291cc93ddd72dca56c103f  loop.sh
+5415732e121be72a24c9ea4482944542  loop.sh
 644c3ea495d5ec8b95356d183901ee31  probe.sh
-3f2770a9b03d4b8d55575eb6bdb5a078  render.awk
+c8eab097f683567a8508a784449ea582  render.awk
 4708c4d3632a04eddaeb78f95e3b410e  start.sh
 5a6f711cc6f84cfb3a88f3e41e61893f  stop.sh
 14e9c20cb6677be9826cf52e23cc944d  update.sh

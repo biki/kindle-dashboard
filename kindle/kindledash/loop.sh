@@ -127,10 +127,11 @@ draw() {
     log "drew $nc commands in $(($(date +%s) - t0)) s, $nf failed"
 }
 
-prompt() {  # black bar with a message at the top of the screen
-    "$FBINK" -q -b -B BLACK -k "top=0,left=0,width=758,height=64"
-    "$FBINK" -q -b -O -m -C WHITE -t "regular=$DIR/fonts/B.ttf,px=30,top=16" -- "$1"
-    "$FBINK" -q -s "top=0,left=0,width=758,height=64"
+prompt() {  # gray bar with a message at the top of the screen (black text: white text did not show)
+    "$FBINK" -q -b -B GRAYD -k "top=0,left=0,width=758,height=64"
+    "$FBINK" -q -b -B BLACK -k "top=64,left=0,width=758,height=3"
+    "$FBINK" -q -b -O -m -t "regular=$DIR/fonts/B.ttf,px=30,top=16" -- "$1"
+    "$FBINK" -q -s "top=0,left=0,width=758,height=67"
 }
 
 bye() {  # called by the touch watcher on a double tap
