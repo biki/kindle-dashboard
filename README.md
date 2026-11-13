@@ -74,7 +74,7 @@ The Kindle pulls new versions from this GitHub repo (`UPDATE_URL` in `kindledash
 - **Single tap** while it is awake: switches between the dashboard and the power meter view (only with `TIBBER_HOST` set). The switch comes about 3 s after the tap, because a second tap would mean "stop". The Kindle keeps the view until the next tap, also after an update. Each tap keeps the Kindle awake for `IDLE` more seconds.
 - **Double tap** while it is awake (two taps within about 2 s): stops the dashboard and goes to the home screen. This also works during a refresh. A sleeping Kindle does not feel taps: press the power button first.
 - If taps do not work: hold the power button for about 15 s. The Kindle restarts without the dashboard.
-- Stop the dashboard before you connect USB.
+- **USB cable**: the dashboard stops when you connect a cable, and it does not start while a cable is connected. The Kindle cannot tell a computer from a wall charger, so a charger also stops it. To keep the dashboard running on a charger, set `USB_STOP=0` (then stop the dashboard yourself before you connect a computer).
 - The screen has no clock, because it changes only every hour. The footer shows the time of the last refresh.
 - The power value is the reading at the last refresh, not live. The time of the reading is below it. Press the power button for a new reading.
 - **Daily row**: the Kindle wakes at `PUSH_AT` (23:55), also in the night pause. It reads the meter twice, writes the row, and sleeps again. It does not draw and does not turn on the light. If the bridge or the sheet fails, it tries again every 10 minutes for 1 hour. After that, the next night writes one row for two days (as the Pi did).

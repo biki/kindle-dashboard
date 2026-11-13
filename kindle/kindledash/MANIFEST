@@ -60,10 +60,10 @@ a7d12ada4abad7633bd69990f6cb2dbf  icons/storm-d-170.png
 e60a8672cb2df5c8b6d66e345122ab2c  icons/storm-d-56.png
 a7d12ada4abad7633bd69990f6cb2dbf  icons/storm-n-170.png
 e60a8672cb2df5c8b6d66e345122ab2c  icons/storm-n-56.png
-12b2990f8568b7bac032a4faaa7ed117  kindledash.conf
-0e93242442348b9e5bb3c6727014fb01  loop.sh
+b8108d4f3ae5e18d0c9199fb6dfa21bd  kindledash.conf
+45fedd708e4ebbf6ae6c893e1baa11c8  loop.sh
 fbdc608bd76d94a8b8635088afa539b3  meter.awk
-4ffd1514f66f4e6941966c3281e6eb98  probe.sh
+4fea8e63a6f837dbbae3418c2510fdb2  probe.sh
 efbe867bce231d08a315317d8e2e72ba  render.awk
 4708c4d3632a04eddaeb78f95e3b410e  start.sh
 5a6f711cc6f84cfb3a88f3e41e61893f  stop.sh

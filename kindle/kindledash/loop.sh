@@ -22,7 +22,11 @@ FBINK=${FBINK:-/mnt/us/libkh/bin/fbink}
 POWER_STATE=${POWER_STATE:-/sys/power/state}
 RTC=${RTC:-/sys/class/rtc}
 TMP=${DASH_TMP:-/tmp/kindledash}
+# 1 while a cable is in (computer or wall charger: the Kindle shows no difference). See usb_on.
+USB_FILE=${USB_FILE:-/sys/devices/system/wario_charger/wario_charger0/connected}
 mkdir -p "$TMP"
+# In USB drive mode /mnt/us can be gone: the stop must work from /tmp.
+cp "$DIR/stop.sh" "$TMP/stop.sh" 2>/dev/null
 # busybox awk may take only one -f: join the parts once.
 cat "$DIR/fontdata.awk" "$DIR/common.awk" "$DIR/render.awk" > "$TMP/render.awk"
 # The meter view is a separate file: an error in tibber.awk must not stop the dashboard.
@@ -161,8 +165,31 @@ bye() {  # called by the touch watcher on a double tap
     rm -f "$TMP/tap"  # no view switch for the first tap
     log "exit: double tap"
     [ "$DASH_LANG" = de ] && prompt "Dashboard wird beendet …" || prompt "Closing dashboard …"
-    setsid sh "$DIR/stop.sh" > /dev/null 2>&1 < /dev/null &
+    setsid sh "$TMP/stop.sh" > /dev/null 2>&1 < /dev/null &
     exit 0
+}
+
+# USB cable in? Only an explicit 1 counts: a missing or unreadable file means "no cable",
+# so a wrong signal can never block the dashboard (and with it the Wi-Fi updates).
+usb_on() { [ "$USB_STOP" = 1 ] && [ "$(cat "$USB_FILE" 2>/dev/null)" = 1 ]; }
+
+# A computer can mount /mnt/us while the dashboard writes there, and the paused Kindle UI can't
+# handle USB mode. So: stop at once, Kindle UI back. Called by the USB watcher.
+usb_bye() {
+    rm -f "$TMP/tap"
+    log "exit: USB cable"
+    [ "$DASH_LANG" = de ] && prompt "USB-Kabel: Dashboard wird beendet …" || prompt "USB cable: closing dashboard …"
+    setsid sh "$TMP/stop.sh" > /dev/null 2>&1 < /dev/null &
+    exit 0
+}
+
+# Checks the cable every second while the Kindle is awake (a plug-in also wakes it).
+# Two reads in a row, so one odd value does not stop the dashboard.
+watch_usb() {
+    while :; do
+        sleep 1
+        usb_on && { sleep 1; usb_on && usb_bye; }
+    done
 }
 
 # Next refresh in seconds: the next multiple of INTERVAL minutes, moved to NIGHT_END in the night.
@@ -282,6 +309,14 @@ echo $$ > "$DIR/pid"
 log "start:fbink $FBINK, place $PLACE, $(set -- $CALENDARS; echo $#) calendar(s)"
 sleep 3  # let the scriptlet finish first
 
+# No start with a cable in: the Kindle UI must stay free for USB mode.
+if usb_on; then
+    log "exit: USB cable at start (remove it, then start again)"
+    [ "$DASH_LANG" = de ] && prompt "Erst USB-Kabel entfernen, dann starten" || prompt "Remove the USB cable, then start"
+    rm -f "$DIR/pid"
+    exit 0
+fi
+
 TOUCH=$(detect_touch)
 # Pause the Kindle UI only when the tap-to-exit works; otherwise there would be no way back.
 if [ -c "$TOUCH" ] && [ -r "$TOUCH" ] && exec 3< "$TOUCH"; then
@@ -295,6 +330,10 @@ POWER=$(detect_power)
 if [ -n "$POWER" ] && [ -c "$POWER" ] && [ -r "$POWER" ] && exec 4< "$POWER"; then
     watch_power &
     log "power key: $POWER"
+fi
+if [ "$USB_STOP" = 1 ]; then
+    watch_usb &
+    log "usb: stop on cable ($USB_FILE: $(cat "$USB_FILE" 2>/dev/null || echo missing))"
 fi
 lipc-set-prop com.lab126.powerd preventScreenSaver 1
 # Keep the user's front light level, so stop.sh can put it back.

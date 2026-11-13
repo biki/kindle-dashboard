@@ -11,6 +11,9 @@ E-ink dashboard (weather, calendar, and a power meter view) that runs on a jailb
 - KUAL is not installed. The dashboard starts from scriptlets in `/mnt/us/documents` (`kindle/documents/*.sh`).
 - `/mnt/us` is FAT. A `mv` from `/tmp` to `/mnt/us` warns about ownership: write temp files next to the target.
 - While USB is connected, the Kindle cannot write to `/mnt/us`. Stop the dashboard before USB.
+- `/mnt/us` is a FUSE mount (`fsp`) over the FAT at `/mnt/base-us`. In USB drive mode it can be gone: the USB stop runs `stop.sh` from `$TMP`.
+- Cable signal: `/sys/devices/system/wario_charger/wario_charger0/connected` (1 = cable). A Mac and a wall charger give the same values in all signals (probe 2026-11-13). `volumd driveModeState` stayed 0 after the eject.
+- The Mac shows file times that the Kindle wrote as UTC, and the times that the Mac wrote as local time.
 
 ## Layout
 
@@ -71,6 +74,7 @@ Docker must run for the busybox tests. `BUSYBOX=busybox:1.28.3` runs `dev-render
 - Refresh every full hour, no refreshes from 23:00 to 06:00. No clock on the screen (it would not be live).
 - Front light: on (`FL_LEVEL`) after start and after a power-button press, for `IDLE` seconds after the refresh. Off before each suspend. `stop.sh` restores the user's level from `fl.saved`.
 - A wake more than 60 s before the RTC alarm counts as a power-button press.
+- USB cable (`USB_STOP=1`): no start with a cable in, and a plug-in stops the dashboard (two reads 1 s apart). Only an explicit `1` counts: a missing file must never block a start.
 - Double tap (two `BTN_TOUCH` downs within about 2 s) stops the dashboard. The touch watcher runs in the background, so it works during a refresh.
 - Language German (`DASH_LANG=de`), place Ingelheim am Rhein, font Nunito.
 - Power meter: off while `TIBBER_HOST` is empty (a release must be safe before the secrets exist). Single tap (no second tap within 3 s) switches the view, saved in `view`. Daily row at `PUSH_AT` (23:55), also in the night pause, with no draw and no light. The row date is the planned day, also for a retry after midnight. The baseline (`tibber.base`) moves only after the sheet confirmed the row.

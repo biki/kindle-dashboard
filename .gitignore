@@ -11,6 +11,7 @@ kindle/kindledash/wtime
 kindle/kindledash/pid
 kindle/kindledash/*.log
 kindle/kindledash/probe.txt
+kindle/kindledash/probe-usb.txt
 kindle/kindledash/fl.saved
 kindle/kindledash/secrets.conf
 kindle/kindledash/.update/

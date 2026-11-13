@@ -41,4 +41,28 @@ FBINK=/mnt/us/libkh/bin/fbink
     echo "--- rtc"; ls /sys/class/rtc/
     echo "--- ui"; pidof cvm
 } > "$DIR/probe.txt" 2>&1
-echo "Probe done. Connect USB and read kindledash/probe.txt"
+
+# USB state, appended per run: run once without a cable, once with the Mac cable (after the eject),
+# once with a wall charger. The differences show which signal tells a computer from a charger.
+{
+    echo "=== usb probe $(date -u '+%Y-%m-%d %H:%M:%S') UTC, battery $(lipc-get-prop com.lab126.powerd battLevel 2>&1)%"
+    for c in lipc-probe lipc-wait-event; do printf '%s: ' "$c"; command -v "$c" || echo missing; done
+    echo "--- powerd status"; lipc-get-prop com.lab126.powerd status 2>&1
+    echo "--- powerd isCharging: $(lipc-get-prop com.lab126.powerd isCharging 2>&1)"
+    for s in com.lab126.volumd com.lab126.hal com.lab126.powerd; do
+        echo "--- lipc-probe -v $s"; lipc-probe -v "$s" 2>&1 | head -n 80
+    done
+    echo "--- power_supply"
+    for d in /sys/class/power_supply/*; do [ -d "$d" ] && { echo "$d"; cat "$d/uevent" 2>&1; }; done
+    echo "--- charger"
+    for f in /sys/devices/system/*charger*/*/* /sys/devices/system/*battery*/*/*; do
+        [ -f "$f" ] && echo "$f: $(head -c 80 "$f" 2>&1 | tr '\n' ' ')"
+    done
+    echo "--- usb sysfs"; find /sys/devices/platform -maxdepth 2 -iname '*usb*' 2>/dev/null
+    for f in /sys/devices/platform/*usb*/*state* /sys/devices/platform/*udc*/*/*state* /sys/class/udc/*/state; do
+        [ -f "$f" ] && echo "$f: $(cat "$f" 2>&1)"
+    done
+    echo "--- modules"; grep -i -E 'usb|g_|gadget|storage|ether|arcotg' /proc/modules
+    echo "--- mounts"; grep -E '/mnt/(us|base-us)' /proc/mounts
+} >> "$DIR/probe-usb.txt" 2>&1
+echo "Probe done. Connect USB and read kindledash/probe.txt and probe-usb.txt"
